@@ -116,8 +116,8 @@ public class BulkReadWriteTest {
         // load all the countries into a HashMap (this isn't the big data set)
         // we'll attach country info to each city (that's the big data set)
         Map<String, Country> countries = new HashMap<String, Country>();
-        System.out.println("1:" + BulkReadWriteTest.class.getClassLoader().getResourceAsStream(COUNTRIES_FILE));
-        BufferedReader countryReader = new BufferedReader(Common.testFileToReader(COUNTRIES_FILE));
+        System.out.println("Reading countries:" + BulkReadWriteTest.class.getClassLoader().getResourceAsStream(COUNTRIES_FILE));
+        BufferedReader countryReader = new BufferedReader(Common.testFileToReader(COUNTRIES_FILE, "UTF-8"));
         String line;
         while ((line = countryReader.readLine()) != null ) {
             addCountry(line, countries);
@@ -125,8 +125,8 @@ public class BulkReadWriteTest {
         countryReader.close();
 
         // write batches of cities combined with their country info
-        System.out.println(BulkReadWriteTest.class.getClassLoader().getResource(CITIES_FILE));
-        BufferedReader cityReader = new BufferedReader(Common.testFileToReader(CITIES_FILE));
+        System.out.println("Reading cities:" + BulkReadWriteTest.class.getClassLoader().getResource(CITIES_FILE));
+        BufferedReader cityReader = new BufferedReader(Common.testFileToReader(CITIES_FILE, "UTF-8"));
         line = null;
         int numWritten = 0;
         while ((line = cityReader.readLine()) != null ) {
@@ -430,7 +430,8 @@ public class BulkReadWriteTest {
         deleteQuery.setDirectory("/cities/");
         queryMgr.delete(deleteQuery);
         JSONDocumentManager docMgr = Common.client.newJSONDocumentManager();
-        docMgr.delete("doc1.json");
-        docMgr.delete("doc2.json");
+        for ( int i=1; i <= 8; i++ ) {
+            docMgr.delete("doc" + i + ".json");
+        }
     }
 }

@@ -90,8 +90,7 @@ public class PojoFacadeTest {
     }
 
     @Test
-    // most of the queries below currently don't work because of issues in the search:search layer
-    // but the numbers expected come from working queries at the cts:search layer
+    // the geo queries below currently don't work yet because underlying layers are not yet ready
     public void testC_QueryPojos() throws Exception {
         StringQueryDefinition stringQuery = Common.client.newQueryManager().newStringDefinition();
         stringQuery.setCriteria("Tungi OR Dalatando OR Chittagong");
@@ -143,6 +142,44 @@ public class PojoFacadeTest {
         assertEquals("Failed to find number of records expected", 11, numRead);
         assertEquals("PojoPage failed to report number of records expected", numRead, page.size());
 
+        // test numeric (integer) values
+        query = qb.value("population", 374801);
+        page = cities.search(query, 1);
+        iterator = page.iterator();
+        numRead = 0;
+        while ( iterator.hasNext() ) {
+            City city = iterator.next();
+            assertEquals("Wrong City", "Tirana", city.getName());
+            numRead++;
+        }
+        assertEquals("Failed to find number of records expected", 1, numRead);
+        assertEquals("PojoPage failed to report number of records expected", numRead, page.size());
+
+        // test numeric (fractional) values
+        query = qb.and(qb.value("latitude", -34.72418), qb.value("longitude", -58.25265));
+        page = cities.search(query, 1);
+        iterator = page.iterator();
+        numRead = 0;
+        while ( iterator.hasNext() ) {
+            City city = iterator.next();
+            assertEquals("Wrong City", "Quilmes", city.getName());
+            numRead++;
+        }
+        assertEquals("Failed to find number of records expected", 1, numRead);
+        assertEquals("PojoPage failed to report number of records expected", numRead, page.size());
+
+        // test null values
+        query = qb.value("country", new String[] {null});
+        page = cities.search(query, 1);
+        iterator = page.iterator();
+        numRead = 0;
+        while ( iterator.hasNext() ) {
+            City city = iterator.next();
+            numRead++;
+        }
+        assertEquals("Failed to find number of records expected", 50, numRead);
+        assertEquals("PojoPage failed to report number of records expected", numRead, page.size());
+
         query = qb.range("population", Operator.LT, 350000);
         page = cities.search(query, 1);
         iterator = page.iterator();
@@ -164,6 +201,7 @@ public class PojoFacadeTest {
         iterator = page.iterator();
         numRead = 0;
         while ( iterator.hasNext() ) {
+            @SuppressWarnings("unused")
             City city = iterator.next();
             numRead++;
         }
@@ -180,6 +218,7 @@ public class PojoFacadeTest {
         iterator = page.iterator();
         numRead = 0;
         while ( iterator.hasNext() ) {
+            @SuppressWarnings("unused")
             City city = iterator.next();
             numRead++;
         }
@@ -196,6 +235,7 @@ public class PojoFacadeTest {
         iterator = page.iterator();
         numRead = 0;
         while ( iterator.hasNext() ) {
+            @SuppressWarnings("unused")
             City city = iterator.next();
             numRead++;
         }
