@@ -36,6 +36,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.StreamingOutput;
 
+import com.marklogic.client.auth.AuthenticationUtils;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpVersion;
 import org.apache.http.auth.params.AuthPNames;
@@ -154,6 +155,9 @@ public class JerseyServices implements RESTServices {
 
 	private boolean checkFirstRequest = false;
 
+	protected String authenticationToken;
+	protected Cookie authenticationCookie;
+
 	static protected class ThreadState {
 		boolean isFirstRequest;
 		ThreadState(boolean value) {
@@ -183,6 +187,10 @@ public class JerseyServices implements RESTServices {
 		} finally {
 			response.close();
 		}
+	}
+
+	public void setAuthenticationToken(String authenticationToken) {
+		this.authenticationToken = authenticationToken;
 	}
 
 	@Override
@@ -363,6 +371,9 @@ public class JerseyServices implements RESTServices {
 				32 * 1024);
 
 		client = ApacheHttpClient4.create(config);
+		if (authenticationToken != null) {
+			authenticationCookie = new Cookie(AuthenticationUtils.TOKEN_COOKIE, authenticationToken);
+		}
 
 		// System.setProperty("javax.net.debug", "all"); // all or ssl
 
@@ -476,7 +487,7 @@ public class JerseyServices implements RESTServices {
 				}
 			}
 
-			response = builder.delete(ClientResponse.class);
+			response = prepareBuilder(builder).delete(ClientResponse.class);
 			status = response.getClientResponseStatus();
 
 			if (status != ClientResponse.Status.SERVICE_UNAVAILABLE) {
@@ -609,7 +620,8 @@ public class JerseyServices implements RESTServices {
 				}
 			}
 
-			response = builder.get(ClientResponse.class);
+			response = prepareBuilder(builder).get(ClientResponse.class);
+
 			status = response.getClientResponseStatus();
 
 			if (status != ClientResponse.Status.SERVICE_UNAVAILABLE) {
@@ -723,7 +735,7 @@ public class JerseyServices implements RESTServices {
 				}
 			}
 
-			response = builder.accept(multipartType).get(ClientResponse.class);
+			response = prepareBuilder(builder).accept(multipartType).get(ClientResponse.class);
 			status = response.getClientResponseStatus();
 
 			if (status != ClientResponse.Status.SERVICE_UNAVAILABLE) {
@@ -1062,6 +1074,7 @@ public class JerseyServices implements RESTServices {
 		long startTime = System.currentTimeMillis();
 		int nextDelay = 0;
 		int retry = 0;
+
 		for (; retry < minRetry || (System.currentTimeMillis() - startTime) < maxDelay; retry++) {
 			if (nextDelay > 0) {
 				try {
@@ -1087,15 +1100,15 @@ public class JerseyServices implements RESTServices {
 					new StreamingOutputImpl((OutputStreamSender) value, reqlog);
 				response =
 					("put".equals(method)) ?
-					builder.put(ClientResponse.class,  sentStream) :
-					builder.post(ClientResponse.class, sentStream);
+					prepareBuilder(builder).put(ClientResponse.class,  sentStream) :
+					prepareBuilder(builder).post(ClientResponse.class, sentStream);
 			} else {
 				Object sentObj = (reqlog != null) ?
 						reqlog.copyContent(value) : value;
 				response =
 					("put".equals(method)) ?
-					builder.put(ClientResponse.class,  sentObj) :
-					builder.post(ClientResponse.class, sentObj);
+					prepareBuilder(builder).put(ClientResponse.class, sentObj) :
+					prepareBuilder(builder).post(ClientResponse.class, sentObj);
 			}
 
 			status = response.getClientResponseStatus();
@@ -3389,7 +3402,7 @@ public class JerseyServices implements RESTServices {
 	}
 
 	private ClientResponse doGet(WebResource.Builder builder) {
-		ClientResponse response = builder.get(ClientResponse.class);
+		ClientResponse response = prepareBuilder(builder).get(ClientResponse.class);
 
 		if (isFirstRequest())
 			setFirstRequest(false);
@@ -3422,15 +3435,15 @@ public class JerseyServices implements RESTServices {
 
 		ClientResponse response = null;
 		if (value instanceof OutputStreamSender) {
-			response = builder
+			response = prepareBuilder(builder)
 					.put(ClientResponse.class, new StreamingOutputImpl(
 							(OutputStreamSender) value, reqlog));
 		} else {
 			if (reqlog != null)
-				response = builder.put(ClientResponse.class,
+				response = prepareBuilder(builder).put(ClientResponse.class,
 						reqlog.copyContent(value));
 			else
-				response = builder.put(ClientResponse.class, value);
+				response = prepareBuilder(builder).put(ClientResponse.class, value);
 		}
 
 		if (isFirstRequest())
@@ -3459,7 +3472,7 @@ public class JerseyServices implements RESTServices {
 		if (isFirstRequest() && hasStreamingPart)
 			makeFirstRequest(0);
 
-		ClientResponse response = builder.put(ClientResponse.class, multiPart);
+		ClientResponse response = prepareBuilder(builder).put(ClientResponse.class, multiPart);
 
 		if (isFirstRequest())
 			setFirstRequest(false);
@@ -3489,12 +3502,12 @@ public class JerseyServices implements RESTServices {
 
 		ClientResponse response = null;
 		if (value instanceof OutputStreamSender) {
-			response = builder
+			response = prepareBuilder(builder)
 					.post(ClientResponse.class, new StreamingOutputImpl(
 							(OutputStreamSender) value, reqlog));
 		} else {
 			if (reqlog != null)
-				response = builder.post(ClientResponse.class,
+				response = prepareBuilder(builder).post(ClientResponse.class,
 						reqlog.copyContent(value));
 			else
 				response = builder.post(ClientResponse.class, value);
@@ -3526,7 +3539,7 @@ public class JerseyServices implements RESTServices {
 		if (isFirstRequest() && hasStreamingPart)
 			makeFirstRequest(0);
 
-		ClientResponse response = builder.post(ClientResponse.class, multiPart);
+		ClientResponse response = prepareBuilder(builder).post(ClientResponse.class, multiPart);
 
 		if (isFirstRequest())
 			setFirstRequest(false);
@@ -4330,5 +4343,10 @@ public class JerseyServices implements RESTServices {
 			response.close();
 		
 		return entity;
+	}
+
+
+	protected WebResource.Builder prepareBuilder(WebResource.Builder builder) {
+		return (authenticationCookie != null) ? builder.cookie(authenticationCookie) : builder;
 	}
 }

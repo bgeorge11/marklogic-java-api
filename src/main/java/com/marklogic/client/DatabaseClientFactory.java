@@ -237,6 +237,21 @@ public class DatabaseClientFactory {
 	static public DatabaseClient newClient(String host, int port, String user, String password, Authentication type, SSLContext context) {
 		return newClient(host, port, user, password, type, context, SSLHostnameVerifier.COMMON);
 	}
+
+	/**
+	 * Creates a client to access the database by means of a REST server using an authentication token.
+	 *
+	 * @param host	the host with the REST server
+	 * @param port	the port for the REST server
+	 * @param authenticationToken authentication token to submit with the request
+	 * @return	a new client for making database requests
+	 */
+	static public DatabaseClient newClient(String host, int port, String authenticationToken) {
+		DatabaseClientImpl client = newClientImpl(host, port, null, null, null, null, null, authenticationToken);
+		client.setHandleRegistry(getHandleRegistry().copy());
+		return client;
+	}
+
 	/**
 	 * Creates a client to access the database by means of a REST server.
 	 * 
@@ -250,13 +265,14 @@ public class DatabaseClientFactory {
 	 * @return	a new client for making database requests
 	 */
 	static public DatabaseClient newClient(String host, int port, String user, String password, Authentication type, SSLContext context, SSLHostnameVerifier verifier) {
-		DatabaseClientImpl client = newClientImpl(host, port, user, password, type, context, verifier);
+		DatabaseClientImpl client = newClientImpl(host, port, user, password, type, context, verifier, null);
 		client.setHandleRegistry(getHandleRegistry().copy());
 		return client;
 	}
-	static private DatabaseClientImpl newClientImpl(String host, int port, String user, String password, Authentication type, SSLContext context, SSLHostnameVerifier verifier) {
+	static private DatabaseClientImpl newClientImpl(String host, int port, String user, String password, Authentication type, SSLContext context, SSLHostnameVerifier verifier, String authenticationToken) {
 		logger.debug("Creating new database client for server at "+host+":"+port);
 		JerseyServices services = new JerseyServices();
+		services.setAuthenticationToken(authenticationToken);
 		services.connect(host, port, user, password, type, context, verifier);
 
 		if (clientConfigurator != null) {
@@ -510,7 +526,7 @@ public class DatabaseClientFactory {
 		 * @return	a new client for making database requests
 		 */
 		public DatabaseClient newClient() {
-			DatabaseClientImpl client = newClientImpl(host, port, user, password, authentication, context, verifier);
+			DatabaseClientImpl client = newClientImpl(host, port, user, password, authentication, context, verifier, null);
 			client.setHandleRegistry(getHandleRegistry().copy());
 
 			return client;
